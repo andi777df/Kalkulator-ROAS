@@ -4,7 +4,7 @@ import UnifiedCalculator from './components/UnifiedCalculator';
 import SummaryDashboard from './components/SummaryDashboard';
 import PercentageSettingsModal from './components/PercentageSettingsModal';
 import { SavedCalculation, FeeSettings, Platform } from './types';
-import { initAuth, logout, googleSignIn, User } from './auth';
+import { initAuth, logout, User } from './auth';
 import { 
   ShoppingBag, Video, Settings, FileSpreadsheet, Info, 
   ChevronRight, Calculator, CheckCircle, Percent, ArrowLeft
@@ -210,22 +210,9 @@ export default function App() {
     setNeedsAuth(true);
   };
 
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
-    try {
-      const result = await googleSignIn();
-      if (result) {
-        setUser(result.user);
-        setNeedsAuth(false);
-      }
-    } catch (err: any) {
-      console.error("Gagal login:", err);
-      if (window.alert) {
-        window.alert(`Gagal terhubung ke Google: ${err.message || err}`);
-      }
-    } finally {
-      setIsLoggingIn(false);
-    }
+  const handleLogin = (loggedInUser: User) => {
+    setUser(loggedInUser);
+    setNeedsAuth(false);
   };
 
   const handleAuthSuccess = (currentUser: User, token: string) => {
@@ -319,7 +306,6 @@ export default function App() {
         user={user} 
         onLogin={handleLogin} 
         onLogout={handleLogout} 
-        isLoggingIn={isLoggingIn} 
         chosenPlatform={chosenPlatform}
         onBackToLanding={() => setChosenPlatform(null)}
       />

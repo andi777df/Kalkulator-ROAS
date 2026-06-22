@@ -6,8 +6,6 @@ export interface User {
   avatar_url?: string;
 }
 
-let cachedAccessToken: string | null = null;
-
 // Initialize auth state listener. Call this on app load.
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
@@ -19,14 +17,9 @@ export const initAuth = (
     return () => {};
   }
 
-  // Check current session
+  // Check current session on mount
   client.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) {
-      const googleToken = session.provider_token || localStorage.getItem('supabase_google_access_token');
-      if (session.provider_token) {
-        localStorage.setItem('supabase_google_access_token', session.provider_token);
-      }
-      cachedAccessToken = googleToken;
       if (onAuthSuccess) {
         onAuthSuccess(
           {
@@ -34,7 +27,7 @@ export const initAuth = (
             id: session.user.id,
             avatar_url: session.user.user_metadata?.avatar_url,
           },
-          googleToken || ''
+          ''
         );
       }
     } else {
@@ -42,13 +35,8 @@ export const initAuth = (
     }
   });
 
-  const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
+  const { data: { subscription } } = client.auth.onAuthStateChange(async (_event, session) => {
     if (session && session.user) {
-      const googleToken = session.provider_token || localStorage.getItem('supabase_google_access_token');
-      if (session.provider_token) {
-        localStorage.setItem('supabase_google_access_token', session.provider_token);
-      }
-      cachedAccessToken = googleToken;
       if (onAuthSuccess) {
         onAuthSuccess(
           {
@@ -56,12 +44,10 @@ export const initAuth = (
             id: session.user.id,
             avatar_url: session.user.user_metadata?.avatar_url,
           },
-          googleToken || ''
+          ''
         );
       }
     } else {
-      cachedAccessToken = null;
-      localStorage.removeItem('supabase_google_access_token');
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -71,36 +57,63 @@ export const initAuth = (
   };
 };
 
-// Must be called from a button click or user interaction
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+// Sign up with email and password
+export const signUpWithEmail = async (
+  email: string,
+  password: string
+): Promise<{ user: User } | null> => {
   const client = getSupabaseClient();
   if (!client) {
-    throw new Error('Supabase belum dikonfigurasi. Harap isi URL dan Anon Key Supabase di pengaturan.');
+    throw new Error('Supabase belum dikonfigurasi.');
   }
 
-  const { error } = await client.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: window.location.origin,
-      scopes: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive',
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent'
+  const { data, error } = await client.auth.signUp({ email, password });
+
+  if (error) throw error;
+
+  if (data.user) {
+    return {
+      user: {
+        email: data.user.email,
+        id: data.user.id,
       }
-    }
-  });
-
-  if (error) {
-    throw error;
+    };
   }
-
-  // The page redirects, so we won't return anything.
   return null;
 };
 
+// Sign in with email and password
+export const signInWithEmail = async (
+  email: string,
+  password: string
+): Promise<{ user: User } | null> => {
+  const client = getSupabaseClient();
+  if (!client) {
+    throw new Error('Supabase belum dikonfigurasi.');
+  }
+
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+
+  if (error) throw error;
+
+  if (data.user) {
+    return {
+      user: {
+        email: data.user.email,
+        id: data.user.id,
+      }
+    };
+  }
+  return null;
+};
+
+// Keep googleSignIn as alias for backward compatibility but now uses email sign-in
+export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  return null; // Not used directly — UI handles this now
+};
+
 export const getAccessToken = async (): Promise<string | null> => {
-  if (cachedAccessToken) return cachedAccessToken;
-  return localStorage.getItem('supabase_google_access_token');
+  return null;
 };
 
 export const logout = async () => {
@@ -108,6 +121,4 @@ export const logout = async () => {
   if (client) {
     await client.auth.signOut();
   }
-  cachedAccessToken = null;
-  localStorage.removeItem('supabase_google_access_token');
 };

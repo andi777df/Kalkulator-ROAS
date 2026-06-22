@@ -5,7 +5,7 @@ import { googleSignIn, logout, getAccessToken, User } from '../auth';
 import { 
   History, Trash2, FileSpreadsheet, LogIn, LogOut, CheckCircle, 
   ChevronRight, BarChart3, TrendingUp, DollarSign, Loader2, AlertCircle, 
-  HelpCircle, Folder, FolderPlus, FolderOpen, ExternalLink, Search, RefreshCw, Copy, Plus, Settings,
+  HelpCircle, ExternalLink, Copy, Settings,
   FileDown, Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,229 +42,14 @@ export default function SummaryDashboard({
     }
   });
   const [errorText, setErrorText] = useState<string | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
-  // Google Drive folders states
-  const [selectedFolder, setSelectedFolder] = useState<{ id: string; name: string } | null>(null);
-  const [folders, setFolders] = useState<{ id: string; name: string }[]>([]);
-  const [isLoadingFolders, setIsLoadingFolders] = useState(false);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [isFolderOpen, setIsFolderOpen] = useState(true);
-  const [folderSearchQuery, setFolderSearchQuery] = useState('');
-
-  // Spreadsheet selection mode state (Tombol 2 settings)
-  const [exportMode, setExportMode] = useState<'new' | 'existing'>(() => {
-    try {
-      return (localStorage.getItem('roas_export_mode') as 'new' | 'existing') || 'new';
-    } catch {
-      return 'new';
-    }
-  });
-  const [existingSpreadsheetInput, setExistingSpreadsheetInput] = useState(() => {
-    try {
-      return localStorage.getItem('roas_existing_spreadsheet_input') || '';
-    } catch {
-      return '';
-    }
-  });
-  const [isTargetConfirmed, setIsTargetConfirmed] = useState(false);
-  const [folderFetchError, setFolderFetchError] = useState<string | null>(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
-  const [showExportSettings, setShowExportSettings] = useState(false);
 
-  const fetchFolders = async () => {
-    setIsLoadingFolders(true);
-    setFolderFetchError(null);
-    try {
-      const token = await getAccessToken();
-      if (!token) {
-        setFolderFetchError("Sesi token kosong. Silakan logout dan login kembali.");
-        return;
-      }
-      const response = await fetch(
-        "https://www.googleapis.com/drive/v3/files?q=mimeType='application/vnd.google-apps.folder'+and+trashed=false&fields=files(id,name)&pageSize=100&orderBy=name",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setFolders(data.files || []);
-      } else {
-        const text = await response.text();
-        console.error("Gagal mengambil folder:", text);
-        try {
-          const parsed = JSON.parse(text);
-          if (parsed?.error?.message) {
-            setFolderFetchError(parsed.error.message);
-          } else {
-            setFolderFetchError(text);
-          }
-        } catch {
-          setFolderFetchError(text);
-        }
-      }
-    } catch (error: any) {
-      console.error("Error fetching folders:", error);
-      setFolderFetchError(error.message || String(error));
-    } finally {
-      setIsLoadingFolders(false);
-    }
-  };
-
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderName.trim()) return;
-    setIsCreatingFolder(true);
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error("Token tidak tersedia");
-      const response = await fetch("https://www.googleapis.com/drive/v3/files", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: newFolderName.trim(),
-          mimeType: "application/vnd.google-apps.folder"
-        })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const createdFolder = { id: data.id, name: newFolderName.trim() };
-        setFolders(prev => [createdFolder, ...prev]);
-        setSelectedFolder(createdFolder);
-        setNewFolderName('');
-        setIsFolderOpen(false);
-      } else {
-        const errText = await response.text();
-        throw new Error(errText);
-      }
-    } catch (error: any) {
-      console.error(error);
-      setFolderFetchError("Gagal membuat folder baru: " + (error.message || error));
-    } finally {
-      setIsCreatingFolder(false);
-    }
-  };
-
-  const extractSpreadsheetId = (input: string): string => {
-    if (!input) return "";
-    const match = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    return match ? match[1] : input.trim();
-  };
-
-  const handleConfirmTargetSaved = () => {
-    try {
-      localStorage.setItem('roas_export_mode', exportMode);
-      localStorage.setItem('roas_existing_spreadsheet_input', existingSpreadsheetInput);
-      setIsTargetConfirmed(true);
-      setTimeout(() => {
-        setIsTargetConfirmed(false);
-      }, 2500);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  // Fetch folders automatically when user signs in or auth changes
-  useEffect(() => {
-    if (user && !needsAuth) {
-      fetchFolders();
-    } else {
-      setFolders([]);
-      setSelectedFolder(null);
-    }
-  }, [user, needsAuth]);
 
   // Stats calculation
   const totalOmset = calculations.reduce((acc, c) => acc + c.result.revenue, 0);
   const totalAdSpend = calculations.reduce((acc, c) => acc + c.result.adSpend, 0);
   const totalProfit = calculations.reduce((acc, c) => acc + c.result.netProfitRp, 0);
   const avgRoas = totalAdSpend > 0 ? totalOmset / totalAdSpend : 0;
-
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
-    setErrorText(null);
-    try {
-      const result = await googleSignIn();
-      if (result) {
-        onAuthSuccess(result.user, result.accessToken);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setErrorText('Gagal melakukan login Google: ' + (err.message || err));
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleExportToSheets = async () => {
-    if (calculations.length === 0) {
-      setErrorText("Belum ada data hasil perhitungan untuk diekspor!");
-      return;
-    }
-
-    setIsExporting(true);
-    setErrorText(null);
-    setSuccessSheet(null);
-
-    try {
-      // 1. Get access token from cache or login inline
-      let token = await getAccessToken();
-      
-      if (!token) {
-        console.log("Token in-memory kosong, memicu login Google popup...");
-        const result = await googleSignIn();
-        if (result) {
-          token = result.accessToken;
-          onAuthSuccess(result.user, result.accessToken);
-        } else {
-          throw new Error("Gagal melakukan autentikasi Akun Google. Token akses kosong.");
-        }
-      }
-
-      let targetSpreadsheetId = "";
-      let targetSpreadsheetUrl = "";
-
-      if (exportMode === "new") {
-        const title = `Laporan Keuangan & ROAS Bisnis (${new Date().toLocaleDateString('id-ID')})`;
-        const sheetInfo = await createNewSpreadsheet(token, title, selectedFolder?.id || undefined);
-        targetSpreadsheetId = sheetInfo.spreadsheetId;
-        targetSpreadsheetUrl = sheetInfo.spreadsheetUrl;
-      } else {
-        const parsedId = extractSpreadsheetId(existingSpreadsheetInput);
-        if (!parsedId) {
-          throw new Error("Silakan masukkan URL atau ID Spreadsheet yang valid di Langkah 2 terlebih dahulu!");
-        }
-        targetSpreadsheetId = parsedId;
-        targetSpreadsheetUrl = `https://docs.google.com/spreadsheets/d/${parsedId}/edit`;
-      }
-
-      // 3. Write and format the sheet
-      await writeCalculationsToSheet(token, targetSpreadsheetId, calculations, feeSettings);
-
-      const sheetDetail = {
-        id: targetSpreadsheetId,
-        url: targetSpreadsheetUrl
-      };
-      setSuccessSheet(sheetDetail);
-      try {
-        localStorage.setItem('roas_last_success_sheet', JSON.stringify(sheetDetail));
-      } catch (e) {
-        console.error("Gagal menyimpan data spreadsheet terakhir", e);
-      }
-    } catch (err: any) {
-      console.error("Export error:", err);
-      setErrorText(err.message || 'Gagal mengekspor data ke Google Sheet. Silakan coba login ulang.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const handleDownloadCSV = () => {
     if (calculations.length === 0) return;
@@ -532,27 +317,6 @@ export default function SummaryDashboard({
           <div className="flex flex-wrap items-center gap-2">
             {calculations.length > 0 && (
               <>
-                <button
-                  type="button"
-                  onClick={handleExportToSheets}
-                  disabled={isExporting}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs rounded-xl flex items-center gap-2 shadow-sm cursor-pointer active:scale-95 transition-all"
-                >
-                  {isExporting ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin text-white" />
-                      Mengekspor...
-                    </>
-                  ) : (
-                    <>
-                      <FileSpreadsheet size={13} />
-                      Ekspor Google Sheets 🚀
-                    </>
-                  )}
-                </button>
-
-
-
                 <button
                   type="button"
                   onClick={handleDownloadExcel}

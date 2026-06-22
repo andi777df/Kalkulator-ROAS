@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, HelpCircle, X, Info, LogIn, LogOut } from 'lucide-react';
-import { User } from 'firebase/auth';
+import { User } from '../auth';
 
 interface HeaderProps {
   user?: User | null;

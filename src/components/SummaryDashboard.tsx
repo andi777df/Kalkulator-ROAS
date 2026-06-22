@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SavedCalculation, FeeSettings } from '../types';
 import { formatIDR, formatPercent, createNewSpreadsheet, writeCalculationsToSheet } from '../sheets';
-import { googleSignIn, logout, getAccessToken } from '../auth';
-import { User } from 'firebase/auth';
+import { googleSignIn, logout, getAccessToken, User } from '../auth';
 import { 
   History, Trash2, FileSpreadsheet, LogIn, LogOut, CheckCircle, 
   ChevronRight, BarChart3, TrendingUp, DollarSign, Loader2, AlertCircle, 

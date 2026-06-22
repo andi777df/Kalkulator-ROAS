@@ -4,8 +4,7 @@ import UnifiedCalculator from './components/UnifiedCalculator';
 import SummaryDashboard from './components/SummaryDashboard';
 import PercentageSettingsModal from './components/PercentageSettingsModal';
 import { SavedCalculation, FeeSettings, Platform } from './types';
-import { initAuth, logout, googleSignIn } from './auth';
-import { User } from 'firebase/auth';
+import { initAuth, logout, googleSignIn, User } from './auth';
 import { 
   ShoppingBag, Video, Settings, FileSpreadsheet, Info, 
   ChevronRight, Calculator, CheckCircle, Percent, ArrowLeft

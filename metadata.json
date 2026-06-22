@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Kalkulator ROAS Shopee \u0026 TikTok",
+  "description": "Aplikasi kalkulator ROAS dengan pengaturan biaya admin Shopee dan TikTok Shop untuk ekspor otomatis ke Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
